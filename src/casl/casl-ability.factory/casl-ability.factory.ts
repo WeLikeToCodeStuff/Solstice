@@ -9,9 +9,10 @@ import {
 } from '@casl/ability';
 import { Injectable } from '@nestjs/common';
 import { Action } from '../Action';
-import { User } from '@/v1/entities/User.entity';
+import { User } from '@/auth/users/entities/User.entity';
+import { Server } from '@/v1/server/entities/Server.entity';
 
-type Subjects = InferSubjects<typeof User> | 'all';
+type Subjects = InferSubjects<typeof User> | InferSubjects<typeof Server> | 'all';
 
 export type AppAbility = MongoAbility<[Action, Subjects]>;
 
@@ -26,7 +27,8 @@ export class CaslAbilityFactory {
         } = new AbilityBuilder<AppAbility>(createMongoAbility);
 
         if (user.isAdministrator) {
-            allow(Action.Manage, 'all'); // read-write access to everything
+            allow(Action.Manage, User); // read-write access to everything
+            allow(Action.Manage, Server); // read-write access to everything
         } else {
             allow(Action.Read, 'all'); // Regular users can read general information
             forbid(Action.Read, User).because(
@@ -35,7 +37,8 @@ export class CaslAbilityFactory {
         }
 
         // Allow users to read their own information
-        allow(Action.Read, User, { id: otherUser.id || user.id });
+        allow(Action.Read, User, { id: otherUser?.id ?? user.id });
+        allow(Action.Read, Server);
 
         // allow(Action.Update, Article, { authorId: user.id });
         // forbid(Action.Delete, Article, { isPublished: true });

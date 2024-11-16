@@ -1,18 +1,26 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { AuthService } from './auth.service';
-import { UsersService } from '@/auth/users/users.service';
+import { ServerController } from './server.controller';
+import { JwtModule } from '@nestjs/jwt';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { CaslModule } from '@/casl/casl.module';
+import { AuthModule } from '@/auth/auth.module';
 import { UserModule } from '@/auth/users/users.module';
 import { getModelToken } from '@nestjs/mongoose';
 import { User } from '@/auth/users/entities/User.entity';
-import { JwtModule } from '@nestjs/jwt';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { UsersService } from '@/auth/users/users.service';
+import { AuthService } from '@/auth/auth.service';
+import { ServerService } from './server.service';
+import { Server } from './entities/Server.entity';
 
-describe('AuthService', () => {
-    let service: AuthService;
+describe('ServerController', () => {
+    let controller: ServerController;
 
     beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
             imports: [
+                ConfigModule.forRoot({
+                    cache: true,
+                }),
                 JwtModule.registerAsync({
                     imports: [ConfigModule],
                     inject: [ConfigService],
@@ -21,10 +29,11 @@ describe('AuthService', () => {
                         signOptions: { expiresIn: '60s' },
                     }),
                 }),
+                CaslModule,
             ],
             providers: [
-                AuthService,
                 UsersService,
+                AuthService,
                 {
                     provide: getModelToken(User.name),
                     useValue: {
@@ -33,13 +42,23 @@ describe('AuthService', () => {
                         password: 'password',
                     } as User,
                 },
+                {
+                    provide: getModelToken(Server.name),
+                    useValue: {
+                        name: "test",
+                        ip: "127.0.0.1",
+                        isOnline: true,
+                    } as Server,
+                },
+                ServerService,
             ],
+            controllers: [ServerController],
         }).compile();
 
-        service = module.get<AuthService>(AuthService);
+        controller = module.get<ServerController>(ServerController);
     });
 
     it('should be defined', () => {
-        expect(service).toBeDefined();
+        expect(controller).toBeDefined();
     });
 });

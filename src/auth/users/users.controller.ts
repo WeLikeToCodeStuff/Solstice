@@ -1,12 +1,12 @@
 import { Body, Controller, Delete, Get, Param, Post } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { User } from '../entities/User.entity';
-import { createUserDto } from '../dtos/createUser.dto';
+import { User } from './entities/User.entity';
+import { createUserDto } from './dto/createUser.dto';
 import { UUID } from 'crypto';
 import * as bcrypt from 'bcrypt';
 import { ApiBody, ApiCreatedResponse, ApiOkResponse, ApiResponse, ApiTags } from '@nestjs/swagger';
 
-@Controller({ path: 'users', version: '1' })
+@Controller({ path: 'users' })
 @ApiTags("Authentication")
 export class UsersController {
     constructor(private readonly usersService: UsersService) {}
@@ -14,7 +14,8 @@ export class UsersController {
     @Get('/list')
     @ApiOkResponse({ description: 'List of users' })
     async getUsers(): Promise<User[]> {
-        return await this.usersService.getUsers();
+        const users = await this.usersService.getUsers();
+        return users.map((user: User) => { const { _id, password, refreshTokens, ...res } = user; return res as User; });
     }
 
     @Post('/create')

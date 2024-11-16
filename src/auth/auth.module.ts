@@ -1,10 +1,10 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
-import { UsersService } from '@/v1/users/users.service';
+import { UsersService } from '@/auth/users/users.service';
 import { MongooseModule } from '@nestjs/mongoose';
-import { User, UserSchema } from '@/v1/entities/User.entity';
-import { UserModule } from '@/v1/users/users.module';
+import { User, UserSchema } from '@/auth/users/entities/User.entity';
+import { UserModule } from '@/auth/users/users.module';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { CaslModule } from '@/casl/casl.module';

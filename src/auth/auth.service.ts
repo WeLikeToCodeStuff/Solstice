@@ -1,5 +1,5 @@
-import { User } from '@/v1/entities/User.entity';
-import { UsersService } from '../v1/users/users.service';
+import { User } from '@/auth/users/entities/User.entity';
+import { UsersService } from './users/users.service';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -25,34 +25,37 @@ export class AuthService {
         }
 
         const payload = { sub: user.id, username: user.username, id: user.id };
+        const refreshToken = await this.jwtService.signAsync(payload, { expiresIn: '7d' });
+        await this.usersService.updateUser({ id: user.id }, { refreshTokens: [...user.refreshTokens, refreshToken] });
         return {
-            access_token: await this.jwtService.signAsync(payload),
-            refresh_token: await this.jwtService.signAsync(payload, {
-                expiresIn: '7d',
-            }),
+            access_token: await this.jwtService.signAsync(payload, { expiresIn: "1d" }),
+            refresh_token: refreshToken,
         };
     }
 
     async refresh(email: string, refreshToken: string): Promise<{ access_token: string, refresh_token: string }> {
         const user: User = await this.usersService.findOne({ email });
         const payload = { sub: user.id, username: user.username, id: user.id };
-        // invalid refresh token
-        if (!await this.jwtService.verifyAsync(refreshToken)) {
-            throw new UnauthorizedException();
+        try {
+            // invalid refresh token
+            if (!await this.jwtService.verifyAsync(refreshToken))
+                throw new UnauthorizedException("Invalid refresh token");
+        } catch (e) {
+            const error: Error = e as Error;
+            throw new UnauthorizedException(error.message, { cause: error.cause, description: error.name });
         }
 
         const newRefreshToken = await this.jwtService.signAsync(payload, {
             expiresIn: '7d',
         });
 
-        await this.usersService.updateUser({
-            id: user.id as UUID,
-        }, {
-            refreshTokens: [...user.refreshTokens, newRefreshToken],
-        });
+        await this.usersService.updateUser(
+            { id: user.id as UUID },
+            { refreshTokens: [...user.refreshTokens.filter((t) => t !== refreshToken), newRefreshToken] },
+        );
 
         return {
-            access_token: await this.jwtService.signAsync(payload),
+            access_token: await this.jwtService.signAsync(payload, { expiresIn: "1d" }),
             refresh_token: newRefreshToken,
         };
     }

@@ -1,3 +1,4 @@
+import { ServerResponse } from 'http';
 import { HeaderMiddleware } from './headers.middleware';
 import { FastifyReply } from 'fastify';
 
@@ -14,7 +15,7 @@ describe('HeaderMiddleware', () => {
         } as unknown as FastifyReply['raw'];
         const next = jest.fn();
 
-        middleware.use(null, res as any, next);
+        middleware.use(null, res as unknown as ServerResponse, next);
 
         res.setHeader('Test-Platform', 'Jest');
         expect(res.setHeader).toHaveBeenCalledTimes(9);

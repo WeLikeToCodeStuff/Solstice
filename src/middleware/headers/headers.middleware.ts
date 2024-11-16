@@ -4,6 +4,7 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 @Injectable()
 export class HeaderMiddleware implements NestMiddleware {
     use(req: FastifyRequest['raw'], res: FastifyReply['raw'], next: () => void) {
+        // Response headers
         res.setHeader('Server', 'Solstice');
         res.setHeader('X-Powered-By', 'Solstice');
         res.setHeader('X-Content-Type-Options', 'nosniff');

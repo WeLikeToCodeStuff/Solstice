@@ -1,6 +1,6 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
-import { User } from '../entities/User.entity';
+import { User } from './entities/User.entity';
 import mongoose, { Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { UUID } from 'crypto';
@@ -10,9 +10,9 @@ export class UsersService {
     constructor(@InjectModel(User.name) private userModel: Model<User>) {}
 
     async getUsers(): Promise<User[]> {
-        const users = await this.userModel.find().exec();
+        const users = await this.userModel.find().lean().exec();
         return users.map((user) => {
-            const { _id, password, ...res } = user.toObject();
+            const { _id, password, ...res } = user;
             return res as User;
         });
     }
@@ -50,7 +50,7 @@ export class UsersService {
     }: {
         username?: string;
         email?: string;
-        id?: UUID;
+        id?: UUID | string;
         showPassword?: boolean;
     },
     toUpdate: Partial<User>) : Promise<User> {
@@ -59,12 +59,15 @@ export class UsersService {
         if (!user) throw new HttpException('User not found', HttpStatus.NOT_FOUND);
         const updatedUser = await this.userModel.findOneAndUpdate(
             { id },
-            { ...toUpdate },
+            {
+                ...toUpdate,
+                updatedTimestamp: Date.now(),
+            },
             { new: true },
-        );
+        ).lean().exec();
 
         if (!updatedUser) throw new HttpException('User not found', HttpStatus.NOT_FOUND);
-        const { _id, password, ...res } = updatedUser.toObject();
+        const { _id, password, ...res } = updatedUser;
         return res as User;
     }
 
@@ -76,22 +79,22 @@ export class UsersService {
     }: {
         username?: string;
         email?: string;
-        id?: UUID;
+        id?: UUID | string;
         showPassword?: boolean;
     }): Promise<User | undefined> {
         const user = await this.userModel.findOne({
             $or: [{ username }, { email }, { id }],
-        });
+        }).lean().exec();
         if (!user) throw new HttpException('User not found', HttpStatus.NOT_FOUND);
         let result: User;
         if (showPassword) {
-            const { _id, ...res } = user.toObject();
+            const { _id, ...res } = user;
             result = res as User;
         } else {
-            const { _id, password, ...res } = user.toObject();
+            const { _id, password, ...res } = user;
             result = res as User;
         }
-        const { __v, ...sanitizedResult } = result as any;
+        const { __v, ...sanitizedResult } = result as Partial<User> & { __v: number };
         return sanitizedResult as User;
     }
 }
