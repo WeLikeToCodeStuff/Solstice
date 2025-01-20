@@ -1,7 +1,7 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { UserModule } from './auth/users/users.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AuthModule } from './auth/auth.module';
@@ -12,6 +12,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { CacheModule } from '@nestjs/cache-manager';
 import { HealthModule } from './health/health.module';
 import { ServerModule } from './v1/server/server.module';
+import { BullModule } from '@nestjs/bullmq';
 
 @Module({
     imports: [
@@ -39,6 +40,16 @@ import { ServerModule } from './v1/server/server.module';
         }),
         MongooseModule.forRoot('mongodb://localhost/Solstice'),
         ScheduleModule.forRoot(),
+        BullModule.forRootAsync({
+            imports: [ConfigModule],
+            useFactory: async (configService: ConfigService) => ({
+                connection: {
+                    host: configService.get('QUEUE_HOST'),
+                    port: configService.get('QUEUE_PORT'),
+                },
+            }),
+            inject: [ConfigService],
+        }),
         // CacheModule.register(),
         UserModule,
         AuthModule,

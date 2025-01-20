@@ -23,6 +23,11 @@ import { v4 as uuidv4 } from 'uuid';
                         this.select('-_id');
                         next();
                     });
+
+                    schema.post('updateOne', function (next) {
+                        this.set({ updatedTimestamp: Date.now() });
+                        next();
+                    });
                     return schema;
                 },
             },

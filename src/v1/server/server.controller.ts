@@ -49,6 +49,7 @@ export class ServerController {
     @UseGuards(AuthGuard, PoliciesGuard)
     @CheckPolicies((ability: MongoAbility) => ability.can(Action.Update, Server))
     update(@Param('id') id: UUID | string, @Body() updateServerDto: UpdateServerDto) {
+        if (!updateServerDto || Object.keys(updateServerDto).length <= 0) return { success: false, error: "No update data provided" };
         return this.serverService.update(id, updateServerDto);
     }
 

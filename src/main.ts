@@ -8,6 +8,7 @@ import { HeaderMiddleware } from './middleware/headers/headers.middleware';
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import metadata from './metadata';
+import { WsAdapter } from '@nestjs/platform-ws';
 
 async function bootstrap() {
     const app = await NestFactory.create<NestFastifyApplication>(

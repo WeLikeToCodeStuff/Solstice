@@ -4,10 +4,13 @@ import { ServerService } from './server.service';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { CaslModule } from '@/casl/casl.module';
-import { Server, ServerSchema } from './entities/Server.entity';
+import { Server, ServerDocument, ServerSchema } from './entities/Server.entity';
 import { MongooseModule } from '@nestjs/mongoose';
 import { v4 as uuidv4 } from 'uuid';
 import { UserModule } from '@/auth/users/users.module';
+import { BullModule } from '@nestjs/bullmq';
+import { ServerCRUDConsumer } from './consumers/ServerCRUD.consumer';
+import { ServerGateway } from './server.gateway';
 
 @Module({
     imports: [
@@ -27,6 +30,11 @@ import { UserModule } from '@/auth/users/users.module';
                         this.select('-_id');
                         next();
                     });
+
+                    schema.pre('updateOne', async function (next) {
+                        this.set({ updatedTimestamp: Date.now() });
+                        next();
+                    });
                     return schema;
                 },
             },
@@ -39,10 +47,18 @@ import { UserModule } from '@/auth/users/users.module';
                 signOptions: { expiresIn: '60s' },
             }),
         }),
+        BullModule.registerQueue({
+            name: 'server',
+        }),
         CaslModule,
         UserModule,
     ],
     controllers: [ServerController],
-    providers: [ServerService],
+    providers: [
+        ServerService,
+        ServerGateway,
+        // BullMQ Consumers
+        ServerCRUDConsumer,
+    ],
 })
 export class ServerModule {}

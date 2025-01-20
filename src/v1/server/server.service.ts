@@ -1,16 +1,18 @@
 import { Injectable } from '@nestjs/common';
-import { Server, ServerDocument, ServerSchema } from './entities/Server.entity';
-import { Model } from 'mongoose';
+import { Server, ServerSchema } from './entities/Server.entity';
+import { isValidObjectId, Model, UpdateResult } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { UpdateServerDto } from './dto/update-server.dto';
 import { CreateServerDto } from './dto/create-server.dto';
 import { UUID } from 'crypto';
-import { plainToInstance } from 'class-transformer';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 
 @Injectable()
 export class ServerService {
     constructor(
         @InjectModel(Server.name) private serverModel: Model<Server>,
+        @InjectQueue('server') private serverQueue: Queue,
     ) {}
 
     async create(createServerDto: CreateServerDto) {
@@ -23,12 +25,26 @@ export class ServerService {
         return serverList.map((server: Server) => Object.fromEntries(Object.entries(server).filter(([key]) => Object.keys(ServerSchema.obj).includes(key)))) as unknown as Server[];
     }
 
-    async findOne(id: UUID | string) {
-        return await this.serverModel.findOne({ id }).lean().exec() as Server;
+    async findOne(id: UUID | string): Promise<Server> {
+        const server: Server = await this.serverModel.findOne({ id }).lean().exec();
+        return Object.fromEntries(Object.entries(server).filter(([key]) => Object.keys(ServerSchema.obj).includes(key))) as unknown as Server;
     }
 
-    async update(id: UUID | string, updateServerDto: UpdateServerDto) {
-        return `This action updates a #${id} server`;
+    async update(id: UUID | string, updateServerDto: UpdateServerDto): Promise<UpdateResult & { success: boolean, changed: Partial<Server> }> {
+        if (updateServerDto?.id) delete updateServerDto.id;
+        const originalServer = await this.serverModel.findOne({ id }).lean().exec();
+        const updateOperation = await this.serverModel.updateOne({ id }, updateServerDto).exec();
+        const updatedServer = await this.serverModel.findOne({ id }).lean().exec();
+        const modifiedFields = Object.entries(updatedServer).filter(([key, value]) => {
+            if (isValidObjectId(originalServer[key]) && isValidObjectId(value))
+                return originalServer[key].toString() !== value.toString();
+            return originalServer[key] !== value;
+        });
+        return {
+            success: updateOperation.acknowledged && updateOperation.modifiedCount === 1,
+            ...updateOperation,
+            changed: modifiedFields.reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {}),
+        }
     }
 
     async remove(id: UUID | string) {
@@ -40,14 +56,11 @@ export class ServerService {
     }
 
     async getServerStatistics() {
-        const totalCount = await this.serverModel.countDocuments();
-        const onlineCount = await this.serverModel.countDocuments({ isOnline: true });
-        const offlineCount = await this.serverModel.countDocuments({ isOnline: false });
         return {
             count: {
-                total: totalCount,
-                online: onlineCount,
-                offline: offlineCount,
+                total: await this.serverModel.countDocuments(),
+                online: await this.serverModel.countDocuments({ isOnline: true }),
+                offline: await this.serverModel.countDocuments({ isOnline: false }),
             },
         };
     }

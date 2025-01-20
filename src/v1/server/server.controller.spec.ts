@@ -11,6 +11,7 @@ import { UsersService } from '@/auth/users/users.service';
 import { AuthService } from '@/auth/auth.service';
 import { ServerService } from './server.service';
 import { Server } from './entities/Server.entity';
+import { BullModule } from '@nestjs/bullmq';
 
 describe('ServerController', () => {
     let controller: ServerController;
@@ -28,6 +29,9 @@ describe('ServerController', () => {
                         secret: configService.get<string>('JWT_SECRET'),
                         signOptions: { expiresIn: '60s' },
                     }),
+                }),
+                BullModule.registerQueue({
+                    name: 'server',
                 }),
                 CaslModule,
             ],
